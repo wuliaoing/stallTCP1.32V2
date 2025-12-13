@@ -56,16 +56,12 @@ const IP_HISTORY = new Map();
 const MAX_PENDING=2097152,KEEPALIVE=15000,STALL_TO=8000,MAX_STALL=12,MAX_RECONN=24;
 const buildUUID=(a,i)=>[...a.slice(i,i+16)].map(n=>n.toString(16).padStart(2,'0')).join('').replace(/^(.{8})(.{4})(.{4})(.{4})(.{12})$/,'$1-$2-$3-$4-$5');
 const extractAddr=b=>{
-    // [FIX] 增加安全检查，防止非法包导致越界
-    if(b.length < 18) throw new Error('Data too short');
-    const length = b[17];
-    if(length === undefined || b.length < 18 + length + 1) throw new Error('Data format error');
+    // [修复] 增加边界检查，防止1101错误
+    if(b.length < 18) throw new Error('Packet too short');
+    const len = b[17];
+    if(b.length < 18 + len + 1) throw new Error('Packet incomplete');
     
-    const o=18+length+1;
-    const p=(b[o]<<8)|b[o+1];
-    const t=b[o+2];
-    let l,h,O=o+3;
-    
+    const o=18+len+1,p=(b[o]<<8)|b[o+1],t=b[o+2];let l,h,O=o+3;
     switch(t){
         case 1:l=4;h=b.slice(O,O+l).join('.');break;
         case 2:l=b[O++];h=new TextDecoder().decode(b.slice(O,O+l));break;
@@ -134,7 +130,7 @@ export default {
 
       if (url.pathname === '/favicon.ico') return new Response(null, { status: 404 });
 
-      // 🔄 功能接口
+      // 🔄 功能接口: 处理前端的特殊请求
       const flag = url.searchParams.get('flag');
       if (flag) {
           if (flag === 'github') {
@@ -146,6 +142,7 @@ export default {
               await sendTgMsg(MY_TG_TOKEN, MY_TG_ID, ctx, title, r, `检测IP: ${checkIp}`);
               return new Response(null, { status: 204 });
           } else if (flag === 'test_tg') {
+              // 测试 TG 消息
               const token = url.searchParams.get('token');
               const id = url.searchParams.get('id');
               if(token && id) {
@@ -154,19 +151,40 @@ export default {
               }
               return new Response(JSON.stringify({ok: false}), { status: 400 });
           } else if (flag === 'get_cf_stats') {
+              // 📊 获取 CF 统计数据 (后端代理，解决CORS)
               const cfEmail = r.headers.get('X-CF-Email');
               const cfKey = r.headers.get('X-CF-Key');
               const cfAcc = r.headers.get('X-CF-Acc');
               if (!cfEmail || !cfKey || !cfAcc) return new Response("Missing Credentials", { status: 400 });
 
               const now = new Date();
-              const start = new Date(now); start.setDate(start.getDate() - 1); 
-              const query = `query { viewer { accounts(filter: {accountTag: "${cfAcc}"}) { workersInvocationsAdaptive(limit: 10, filter: { datetime_geq: "${start.toISOString()}", datetime_leq: "${now.toISOString()}" }) { sum { requests } } } } }`;
+              const start = new Date(now); start.setDate(start.getDate() - 1); // 过去24h
+              const query = `
+                query {
+                  viewer {
+                    accounts(filter: {accountTag: "${cfAcc}"}) {
+                      workersInvocationsAdaptive(limit: 10, filter: {
+                        datetime_geq: "${start.toISOString()}",
+                        datetime_leq: "${now.toISOString()}"
+                      }) {
+                        sum { requests }
+                      }
+                    }
+                  }
+                }
+              `;
               const cfReq = await fetch("https://api.cloudflare.com/client/v4/graphql", {
-                  method: "POST", headers: { "Content-Type": "application/json", "X-Auth-Email": cfEmail, "X-Auth-Key": cfKey }, body: JSON.stringify({ query })
+                  method: "POST",
+                  headers: {
+                      "Content-Type": "application/json",
+                      "X-Auth-Email": cfEmail,
+                      "X-Auth-Key": cfKey
+                  },
+                  body: JSON.stringify({ query })
               });
               return new Response(cfReq.body, { status: cfReq.status, headers: { 'Content-Type': 'application/json' } });
           } else if (flag === 'net_test') {
+              // 🌐 网络连通性测试 (后端代理)
               const target = url.searchParams.get('url');
               if(!target) return new Response("Missing URL", {status: 400});
               const start = Date.now();
@@ -183,9 +201,11 @@ export default {
       if (MY_SUB_PASSWORD && url.pathname === `/${MY_SUB_PASSWORD}`) {
           const K_CLASH = 'c'+'l'+'a'+'s'+'h';
           const K_SB = 's'+'i'+'n'+'g'+'-'+'b'+'o'+'x';
+          const K_VR = 'v'+'2'+'r'+'a'+'y';
           
           const isClash = UA.includes(K_CLASH) || UA.includes('meta') || UA.includes('stash');
           const isSingbox = UA.includes(K_SB) || UA.includes('singbox') || UA.includes('sfi') || UA.includes('box') || UA.includes('karing') || UA.includes('neko');
+          const isV2ray = UA.includes(K_VR);
           const isConverter = UA.includes("subconverter") || UA.includes("sub-one-proxy");
           const isFlagged = url.searchParams.has('flag');
           const now = Date.now();
@@ -195,6 +215,7 @@ export default {
              let notifTitle = isWhite ? "🔬 管理员测试订阅" : "🌍 用户访问订阅";
              if (isSingbox) { clientName = "Sing-box"; notifTitle = "🔄 用户订阅更新"; }
              else if (isClash) { clientName = "Clash"; notifTitle = "🔄 用户订阅更新"; }
+             else if(d) { clientName=atob("djJyYXlORw=="); notifTitle="🔄 用户进行了订阅更新"; }  
              else if (isConverter) { clientName = "API转换"; notifTitle = "🔄 用户订阅更新"; }
 
              const p = sendTgMsg(MY_TG_TOKEN, MY_TG_ID, ctx, notifTitle, r, `客户端: ${clientName}`);
@@ -708,7 +729,12 @@ function checkProxy(){
   if(e){ navigator.clipboard.writeText(e).then(()=>{ alert("ProxyIP 已复制!"); window.open("${PROXY_CHECK_URL}","_blank"); }); } else { window.open("${PROXY_CHECK_URL}","_blank"); }
 }
 function showToast(e){ const t=document.getElementById("toast"); t.innerText=e; t.classList.add("show"); setTimeout(()=>t.classList.remove("show"),2000); }
-function logout(){ document.cookie = "auth=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;"; window.location.reload(); }
+function logout(){ 
+  showToast("正在退出...");
+  document.cookie = "auth=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/";
+  document.cookie = "auth=; expires=Thu, 01 Jan 1970 00:00:00 UTC";
+  setTimeout(() => window.location.href = "/", 300);
+}
 window.onload=init;
 </script>
 </body>
