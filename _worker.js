@@ -4,9 +4,9 @@ import { connect } from 'cloudflare:sockets';
 // 🟣 1. 用户配置区域 (默认值/硬编码)
 //    优先级说明: 环境变量 > D1数据库 > KV > 下面的硬编码常量
 // =============================================================================
-const UUID = "06b65903-406d-4a41-8463-6fd5c0ee7798"; // 修改可用的uuid
-const WEB_PASSWORD = "你的登录密码";  //自己要修改自定义的登录密码
-const SUB_PASSWORD = "你的订阅密码";  // 自己要修改自定义的订阅密码
+const UUID = "92677e9d-72fa-44c5-855a-ccd4445ab677"; // 修改可用的uuid
+const WEB_PASSWORD = "@Wuliaoing0";  //自己要修改自定义的登录密码
+const SUB_PASSWORD = "@Wling0";  // 自己要修改自定义的订阅密码
 const DEFAULT_PROXY_IP = "ProxyIP.US.CMLiussss.net";  //可修改自定义的proxyip
 //⚠️ 注意：下方DEFAULT_SUB_DOMAIN如果有值，只执行这个上游订阅。如果要用下方的ADD本地节点，请务必把这里留空！ 
 const DEFAULT_SUB_DOMAIN = "sub.cmliussss.net";  //可修改自定义的sub订阅器 为空则直接使用远程ADD
@@ -17,9 +17,9 @@ const DEFAULT_CONVERTER = "https://subapi.cmliussss.net";  //可修改自定义�
 const CLASH_CONFIG = "https://raw.githubusercontent.com/cmliu/ACL4SSR/main/Clash/config/ACL4SSR_Online_Full_MultiMode.ini"; //可修改自定义订阅配置转换ini
 const SINGBOX_CONFIG_V12 = "https://raw.githubusercontent.com/sinspired/sub-store-template/main/1.12.x/sing-box.json"; //禁止修改 优先使用1.12 后用1.11
 const SINGBOX_CONFIG_V11 = "https://raw.githubusercontent.com/sinspired/sub-store-template/main/1.11.x/sing-box.json"; //禁止修改
-const TG_BOT_TOKEN = ""; //你的机器人token
-const TG_CHAT_ID = "";  //你的TG ID
-const ADMIN_IP   = "";  //你的白名单IP 保护你不会被自己域名拉黑 (支持多IP，IPV4跟IPV6 使用英文逗号分隔)
+const TG_BOT_TOKEN = "8187360593:AAHuFf72lN7-ygco2UtjrjX2D4knWn8qyzQ"; //你的机器人token
+const TG_CHAT_ID = "6132477616";  //你的TG ID
+const ADMIN_IP   = "39.162.166.142,192.168.1.5";  //你的白名单IP 保护你不会被自己域名拉黑 (支持多IP，IPV4跟IPV6 使用英文逗号分隔)
 
 // =============================================================================
 // 🟢 特征码深度混淆 (全文无敏感词)
